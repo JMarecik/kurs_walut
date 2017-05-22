@@ -35,6 +35,8 @@ import com.github.messenger4j.send.templates.GenericTemplate;
 import com.github.messenger4j.send.templates.ReceiptTemplate;
 import java.util.Date;
 import java.util.List;
+import java.net.*;
+import java.io.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,6 +199,10 @@ public class MessengerPlatformCallbackHandler {
                         sendTypingOff(senderId);
                         break;
 
+                    case "usd":
+                        sendQuotation(senderId);
+                        break;
+
                     /*
                     case "account linking":
                         sendAccountLinking(senderId);
@@ -257,19 +263,19 @@ public class MessengerPlatformCallbackHandler {
 
         final GenericTemplate genericTemplate = GenericTemplate.newBuilder()
                 .addElements()
-                    .addElement("rift")
-                        .subtitle("Next-generation virtual reality")
-                        .itemUrl("https://www.oculus.com/en-us/rift/")
-                        .imageUrl(RESOURCE_URL + "/assets/rift.png")
-                        .buttons(riftButtons)
-                        .toList()
-                    .addElement("touch")
-                        .subtitle("Your Hands, Now in VR")
-                        .itemUrl("https://www.oculus.com/en-us/touch/")
-                        .imageUrl(RESOURCE_URL + "/assets/touch.png")
-                        .buttons(touchButtons)
-                        .toList()
-                    .done()
+                .addElement("rift")
+                .subtitle("Next-generation virtual reality")
+                .itemUrl("https://www.oculus.com/en-us/rift/")
+                .imageUrl(RESOURCE_URL + "/assets/rift.png")
+                .buttons(riftButtons)
+                .toList()
+                .addElement("touch")
+                .subtitle("Your Hands, Now in VR")
+                .itemUrl("https://www.oculus.com/en-us/touch/")
+                .imageUrl(RESOURCE_URL + "/assets/touch.png")
+                .buttons(touchButtons)
+                .toList()
+                .done()
                 .build();
 
         this.sendClient.sendTemplate(recipientId, genericTemplate);
@@ -281,29 +287,29 @@ public class MessengerPlatformCallbackHandler {
         final ReceiptTemplate receiptTemplate = ReceiptTemplate.newBuilder("Peter Chang", uniqueReceiptId, "USD", "Visa 1234")
                 .timestamp(1428444852L)
                 .addElements()
-                    .addElement("Oculus Rift", 599.00f)
-                        .subtitle("Includes: headset, sensor, remote")
-                        .quantity(1)
-                        .currency("USD")
-                        .imageUrl(RESOURCE_URL + "/assets/riftsq.png")
-                        .toList()
-                    .addElement("Samsung Gear VR", 99.99f)
-                        .subtitle("Frost White")
-                        .quantity(1)
-                        .currency("USD")
-                        .imageUrl(RESOURCE_URL + "/assets/gearvrsq.png")
-                        .toList()
-                    .done()
+                .addElement("Oculus Rift", 599.00f)
+                .subtitle("Includes: headset, sensor, remote")
+                .quantity(1)
+                .currency("USD")
+                .imageUrl(RESOURCE_URL + "/assets/riftsq.png")
+                .toList()
+                .addElement("Samsung Gear VR", 99.99f)
+                .subtitle("Frost White")
+                .quantity(1)
+                .currency("USD")
+                .imageUrl(RESOURCE_URL + "/assets/gearvrsq.png")
+                .toList()
+                .done()
                 .addAddress("1 Hacker Way", "Menlo Park", "94025", "CA", "US").done()
                 .addSummary(626.66f)
-                    .subtotal(698.99f)
-                    .shippingCost(20.00f)
-                    .totalTax(57.67f)
-                    .done()
+                .subtotal(698.99f)
+                .shippingCost(20.00f)
+                .totalTax(57.67f)
+                .done()
                 .addAdjustments()
-                    .addAdjustment().name("New Customer Discount").amount(-50f).toList()
-                    .addAdjustment().name("$100 Off Coupon").amount(-100f).toList()
-                    .done()
+                .addAdjustment().name("New Customer Discount").amount(-50f).toList()
+                .addAdjustment().name("$100 Off Coupon").amount(-100f).toList()
+                .done()
                 .build();
 
         this.sendClient.sendTemplate(recipientId, receiptTemplate);
@@ -485,6 +491,31 @@ public class MessengerPlatformCallbackHandler {
     }
 
     private void sendTextMessage(String recipientId, String text) {
+        try {
+            final Recipient recipient = Recipient.newBuilder().recipientId(recipientId).build();
+            final NotificationType notificationType = NotificationType.REGULAR;
+            final String metadata = "DEVELOPER_DEFINED_METADATA";
+
+            this.sendClient.sendTextMessage(recipient, notificationType, text, metadata);
+        } catch (MessengerApiException | MessengerIOException e) {
+            handleSendException(e);
+        }
+    }
+
+    private void sendQuotation(String recipientId) {
+        String cur = "usd";
+        String aURL = "http://api.nbp.pl/api/exchangerates/rates/a/"+cur;
+        URL oracle = new URL(aURL);
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(oracle.openStream()));
+        String x = "";
+        String inputLine;
+        while ((inputLine = in.readLine()) != null)
+            x+=inputLine;
+        in.close();
+        int len = x.length();
+        String text=x.substring(len-9,len-3);
+
         try {
             final Recipient recipient = Recipient.newBuilder().recipientId(recipientId).build();
             final NotificationType notificationType = NotificationType.REGULAR;
